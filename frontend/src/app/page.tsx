@@ -1,7 +1,20 @@
+'use client'
+
+import { useState } from 'react'
 import Link from 'next/link'
-import { Code2, Zap, Shield, Users } from 'lucide-react'
+import { useAuth } from '../app/FirebaseProvider'
+import { Code2, Zap, Shield, Users, LogOut, Loader2 } from 'lucide-react'
 
 export default function Home() {
+  const { user, loading, signOut } = useAuth()
+  const [signingOut, setSigningOut] = useState(false)
+
+  const handleSignOut = async () => {
+    setSigningOut(true)
+    await signOut()
+    setSigningOut(false)
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-blue-50">
       {/* Header */}
@@ -13,18 +26,39 @@ export default function Home() {
               <span className="text-xl font-bold">AmkyawDev Coder AI</span>
             </div>
             <nav className="flex items-center gap-6">
-              <Link href="/dashboard" className="text-sm font-medium hover:text-blue-600">
-                Dashboard
-              </Link>
-              <Link href="/auth/login" className="text-sm font-medium hover:text-blue-600">
-                Login
-              </Link>
-              <Link 
-                href="/auth/signup" 
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
-              >
-                Get Started
-              </Link>
+              {loading ? (
+                <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+              ) : user ? (
+                <>
+                  <Link href="/dashboard" className="text-sm font-medium hover:text-blue-600">
+                    Dashboard
+                  </Link>
+                  <button
+                    onClick={handleSignOut}
+                    disabled={signingOut}
+                    className="flex items-center gap-2 text-sm font-medium text-red-600 hover:text-red-700"
+                  >
+                    {signingOut ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <LogOut className="h-4 w-4" />
+                    )}
+                    Sign Out
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link href="/auth/login" className="text-sm font-medium hover:text-blue-600">
+                    Login
+                  </Link>
+                  <Link 
+                    href="/auth/signup" 
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+                  >
+                    Get Started
+                  </Link>
+                </>
+              )}
             </nav>
           </div>
         </div>
