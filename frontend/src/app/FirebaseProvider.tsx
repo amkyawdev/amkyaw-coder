@@ -31,7 +31,7 @@ interface FirebaseProviderProps {
   children: ReactNode
 }
 
-export default function FirebaseProvider({ children }: FirebaseProviderProps) {
+export function FirebaseProvider({ children }: FirebaseProviderProps) {
   const [user, setUser] = useState<FirebaseUser | null>(null)
   const [loading, setLoading] = useState(true)
 
