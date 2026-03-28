@@ -10,6 +10,7 @@ import sessionsRouter from './routes/sessions'
 import projectsRouter from './routes/projects'
 import filesRouter from './routes/files'
 import eventsRouter from './routes/events'
+import authRouter from './routes/auth'
 
 // Middleware
 import { errorHandler } from './middleware/errorHandler'
@@ -42,6 +43,7 @@ app.use(cors({
 app.use(express.json())
 
 // Routes
+app.use('/api/auth', authRouter)
 app.use('/api/sessions', sessionsRouter)
 app.use('/api/projects', projectsRouter)
 app.use('/api/files', filesRouter)
