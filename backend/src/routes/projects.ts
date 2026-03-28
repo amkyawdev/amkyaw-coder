@@ -1,77 +1,106 @@
 import { Router } from 'express'
+import { Project } from '../models/Project'
 
 const router = Router()
 
-// In-memory storage (replace with database in production)
-const projects = new Map()
-
 // Get all projects for user
-router.get('/', (req, res) => {
-  const userId = req.headers['x-user-id'] as string
-  const userProjects = Array.from(projects.values()).filter(
-    (p: any) => p.userId === userId
-  )
-  res.json(userProjects)
+router.get('/', async (req, res, next) => {
+  try {
+    const userId = req.headers['x-user-id'] as string
+    
+    if (!userId) {
+      const projects = await Project.find().sort({ updatedAt: -1 })
+      return res.json(projects)
+    }
+    
+    const projects = await Project.find({ userId }).sort({ updatedAt: -1 })
+    res.json(projects)
+  } catch (error) {
+    next(error)
+  }
 })
 
 // Create new project
-router.post('/', (req, res) => {
-  const { name, description } = req.body
-  const userId = req.headers['x-user-id'] as string
-  
-  const project = {
-    id: `proj_${Date.now()}`,
-    name,
-    description: description || '',
-    userId,
-    createdAt: new Date().toISOString(),
-    files: [],
+router.post('/', async (req, res, next) => {
+  try {
+    const { name, description, githubRepo } = req.body
+    const userId = req.headers['x-user-id'] as string
+    
+    const project = new Project({
+      userId: userId || 'default',
+      name,
+      description: description || '',
+      githubRepo: githubRepo || '',
+      files: [],
+    })
+    
+    await project.save()
+    res.status(201).json(project)
+  } catch (error) {
+    next(error)
   }
-  
-  projects.set(project.id, project)
-  res.status(201).json(project)
 })
 
 // Get project by ID
-router.get('/:id', (req, res) => {
-  const { id } = req.params
-  const project = projects.get(id)
-  
-  if (!project) {
-    return res.status(404).json({ error: 'Project not found' })
+router.get('/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params
+    
+    const project = await Project.findById(id)
+    
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' })
+    }
+    
+    res.json(project)
+  } catch (error) {
+    next(error)
   }
-  
-  res.json(project)
 })
 
 // Update project
-router.put('/:id', (req, res) => {
-  const { id } = req.params
-  const { name, description } = req.body
-  
-  const project = projects.get(id)
-  if (!project) {
-    return res.status(404).json({ error: 'Project not found' })
+router.put('/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params
+    const { name, description, files, githubRepo } = req.body
+    
+    const project = await Project.findByIdAndUpdate(
+      id,
+      { 
+        name, 
+        description, 
+        files, 
+        githubRepo,
+        updatedAt: new Date() 
+      },
+      { new: true }
+    )
+    
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' })
+    }
+    
+    res.json(project)
+  } catch (error) {
+    next(error)
   }
-  
-  project.name = name || project.name
-  project.description = description || project.description
-  project.updatedAt = new Date().toISOString()
-  
-  projects.set(id, project)
-  res.json(project)
 })
 
 // Delete project
-router.delete('/:id', (req, res) => {
-  const { id } = req.params
-  
-  if (!projects.has(id)) {
-    return res.status(404).json({ error: 'Project not found' })
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params
+    
+    const project = await Project.findByIdAndDelete(id)
+    
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' })
+    }
+    
+    res.status(204).send()
+  } catch (error) {
+    next(error)
   }
-  
-  projects.delete(id)
-  res.status(204).send()
 })
 
 export default router

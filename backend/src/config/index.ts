@@ -6,9 +6,9 @@ export const config = {
   port: process.env.PORT || 4000,
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
   
-  // Database
-  database: {
-    url: process.env.DATABASE_URL || 'postgresql://localhost:5432/amkyawcoder',
+  // MongoDB
+  mongo: {
+    uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/amkyawcoder',
   },
 
   // JWT

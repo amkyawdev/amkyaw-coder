@@ -1,77 +1,99 @@
 import { Router } from 'express'
+import { Project } from '../models/Project'
 
 const router = Router()
 
-// In-memory file storage (replace with database/S3 in production)
-const files = new Map()
-
 // Get all files in a project
-router.get('/project/:projectId', (req, res) => {
-  const { projectId } = req.params
-  const projectFiles = Array.from(files.values()).filter(
-    (f: any) => f.projectId === projectId
-  )
-  res.json(projectFiles)
+router.get('/project/:projectId', async (req, res, next) => {
+  try {
+    const { projectId } = req.params
+    
+    const project = await Project.findById(projectId)
+    
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' })
+    }
+    
+    res.json(project.files || [])
+  } catch (error) {
+    next(error)
+  }
 })
 
-// Create new file
-router.post('/', (req, res) => {
-  const { projectId, name, content, type } = req.body
-  
-  const file = {
-    id: `file_${Date.now()}`,
-    projectId,
-    name,
-    content: content || '',
-    type: type || 'text',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+// Create new file in a project
+router.post('/', async (req, res, next) => {
+  try {
+    const { projectId, name, path, content, type } = req.body
+    
+    const project = await Project.findById(projectId)
+    
+    if (!project) {
+      return res.status(404).json({ error: 'Project not found' })
+    }
+    
+    const newFile = {
+      name,
+      path: path || name,
+      content: content || '',
+      type: type || 'file',
+    }
+    
+    project.files.push(newFile)
+    await project.save()
+    
+    res.status(201).json(newFile)
+  } catch (error) {
+    next(error)
   }
-  
-  files.set(file.id, file)
-  res.status(201).json(file)
-})
-
-// Get file by ID
-router.get('/:id', (req, res) => {
-  const { id } = req.params
-  const file = files.get(id)
-  
-  if (!file) {
-    return res.status(404).json({ error: 'File not found' })
-  }
-  
-  res.json(file)
 })
 
 // Update file
-router.put('/:id', (req, res) => {
-  const { id } = req.params
-  const { content, name } = req.body
-  
-  const file = files.get(id)
-  if (!file) {
-    return res.status(404).json({ error: 'File not found' })
+router.put('/:id', async (req, res, next) => {
+  try {
+    const { projectId } = req.query as { projectId: string }
+    const { content, name } = req.body
+    
+    const project = await Project.findOneAndUpdate(
+      { _id: projectId, 'files._id': req.params.id },
+      {
+        $set: {
+          'files.$.content': content,
+          'files.$.name': name,
+        },
+      },
+      { new: true }
+    )
+    
+    if (!project) {
+      return res.status(404).json({ error: 'File not found' })
+    }
+    
+    const file = project.files.id(req.params.id)
+    res.json(file)
+  } catch (error) {
+    next(error)
   }
-  
-  file.content = content !== undefined ? content : file.content
-  file.name = name || file.name
-  file.updatedAt = new Date().toISOString()
-  
-  files.set(id, file)
-  res.json(file)
 })
 
 // Delete file
-router.delete('/:id', (req, res) => {
-  const { id } = req.params
-  
-  if (!files.has(id)) {
-    return res.status(404).json({ error: 'File not found' })
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const { projectId } = req.query as { projectId: string }
+    
+    const project = await Project.findOneAndUpdate(
+      { _id: projectId },
+      { $pull: { files: { _id: req.params.id } } },
+      { new: true }
+    )
+    
+    if (!project) {
+      return res.status(404).json({ error: 'File not found' })
+    }
+    
+    res.status(204).send()
+  } catch (error) {
+    next(error)
   }
-  
-  files.delete(id)
-  res.status(204).send()
 })
 
 export default router

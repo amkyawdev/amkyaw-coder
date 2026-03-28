@@ -3,6 +3,7 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 import { createServer } from 'http'
 import { WebSocketServer } from 'ws'
+import { connectDB } from './config/database'
 
 // Routes
 import sessionsRouter from './routes/sessions'
@@ -56,8 +57,15 @@ app.use(errorHandler)
 
 const PORT = process.env.PORT || 4000
 
-httpServer.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`)
-})
+// Connect to MongoDB and start server
+const startServer = async () => {
+  await connectDB()
+  
+  httpServer.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`)
+  })
+}
+
+startServer()
 
 export { app, wss }
