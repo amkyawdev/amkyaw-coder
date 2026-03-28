@@ -101,3 +101,6 @@ export default function FirebaseProvider({ children }: FirebaseProviderProps) {
     </AuthContext.Provider>
   )
 }
+
+// Default export
+export default FirebaseProvider
