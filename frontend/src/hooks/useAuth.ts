@@ -1,3 +1,3 @@
 'use client'
 
-export { useAuth, FirebaseProvider } from './FirebaseProvider'
+export { useAuth, FirebaseProvider } from '../app/FirebaseProvider'
