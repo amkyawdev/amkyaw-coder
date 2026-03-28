@@ -6,6 +6,9 @@ import Link from 'next/link'
 import { useAuth } from '../../FirebaseProvider'
 import { Code2, Mail, Lock, Loader2, User } from 'lucide-react'
 
+// Force dynamic rendering to avoid SSR issues with useAuth
+export const dynamic = 'force-dynamic'
+
 export default function SignupPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
