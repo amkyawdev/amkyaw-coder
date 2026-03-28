@@ -35,9 +35,11 @@ export default function DashboardPage() {
     }
   }, [user])
 
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:4000'
+
   const fetchProjects = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/projects`)
+      const response = await fetch(`${API_URL}/api/projects`)
       const data = await response.json()
       setProjects(data)
     } catch (error) {
@@ -53,7 +55,7 @@ export default function DashboardPage() {
 
     setCreating(true)
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/projects`, {
+      const response = await fetch(`${API_URL}/api/projects`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newProjectName })
@@ -73,7 +75,7 @@ export default function DashboardPage() {
     if (!confirm('Are you sure you want to delete this project?')) return
 
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/projects/${id}`, {
+      await fetch(`${API_URL}/api/projects/${id}`, {
         method: 'DELETE'
       })
       setProjects(projects.filter(p => p._id !== id))
