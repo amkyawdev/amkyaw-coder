@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useAuth } from '../app/FirebaseProvider'
+import { useAuth } from './FirebaseProvider'
 import { Code2, Zap, Shield, Users, LogOut, Loader2 } from 'lucide-react'
 
 export default function Home() {

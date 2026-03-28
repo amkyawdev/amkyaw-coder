@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { useAuth } from '../app/FirebaseProvider'
+import { useAuth } from '../FirebaseProvider'
 import { Code2, Plus, FolderOpen, Trash2, Loader2, LogOut } from 'lucide-react'
 
 interface Project {
