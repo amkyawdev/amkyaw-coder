@@ -1,7 +1,7 @@
 import { Request, Response } from 'express'
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
-import { User } from '../models/User'
+import pool from '../config/database'
 import { config } from '../config'
 
 export class AuthController {
@@ -9,6 +9,7 @@ export class AuthController {
    * Register new user
    */
   static async register(req: Request, res: Response) {
+    const client = await pool.connect()
     try {
       const { email, password, name } = req.body
 
@@ -17,8 +18,11 @@ export class AuthController {
       }
 
       // Check if user exists
-      const existingUser = await User.findOne({ email })
-      if (existingUser) {
+      const existingUser = await client.query(
+        'SELECT id FROM users WHERE email = $1',
+        [email]
+      )
+      if (existingUser.rows.length > 0) {
         return res.status(400).json({ error: 'Email already registered' })
       }
 
@@ -26,21 +30,19 @@ export class AuthController {
       const hashedPassword = await bcrypt.hash(password, 10)
 
       // Create user
-      const user = new User({
-        email,
-        password: hashedPassword,
-        name: name || email.split('@')[0],
-      })
-
-      await user.save()
+      const result = await client.query(
+        'INSERT INTO users (email, password, name) VALUES ($1, $2, $3) RETURNING id, email, name',
+        [email, hashedPassword, name || email.split('@')[0]]
+      )
+      const user = result.rows[0]
 
       // Generate JWT
-      const payload = { userId: String(user._id), email: user.email }
+      const payload = { userId: String(user.id), email: user.email }
       const token = jwt.sign(payload, config.jwt.secret, { expiresIn: '7d' } as any)
 
       res.status(201).json({
         user: {
-          id: user._id,
+          id: user.id,
           email: user.email,
           name: user.name,
         },
@@ -49,6 +51,8 @@ export class AuthController {
     } catch (error) {
       console.error('Register error:', error)
       res.status(500).json({ error: 'Failed to register user' })
+    } finally {
+      client.release()
     }
   }
 
@@ -56,6 +60,7 @@ export class AuthController {
    * Login user
    */
   static async login(req: Request, res: Response) {
+    const client = await pool.connect()
     try {
       const { email, password } = req.body
 
@@ -64,7 +69,11 @@ export class AuthController {
       }
 
       // Find user
-      const user = await User.findOne({ email })
+      const result = await client.query(
+        'SELECT id, email, password, name FROM users WHERE email = $1',
+        [email]
+      )
+      const user = result.rows[0]
       if (!user) {
         return res.status(401).json({ error: 'Invalid credentials' })
       }
@@ -76,12 +85,12 @@ export class AuthController {
       }
 
       // Generate JWT
-      const payload = { userId: String(user._id), email: user.email }
+      const payload = { userId: String(user.id), email: user.email }
       const token = jwt.sign(payload, config.jwt.secret, { expiresIn: '7d' } as any)
 
       res.json({
         user: {
-          id: user._id,
+          id: user.id,
           email: user.email,
           name: user.name,
         },
@@ -90,6 +99,8 @@ export class AuthController {
     } catch (error) {
       console.error('Login error:', error)
       res.status(500).json({ error: 'Failed to login' })
+    } finally {
+      client.release()
     }
   }
 
@@ -97,22 +108,29 @@ export class AuthController {
    * Get current user
    */
   static async me(req: Request, res: Response) {
+    const client = await pool.connect()
     try {
       const userId = (req as any).userId
-      const user = await User.findById(userId).select('-password')
+      const result = await client.query(
+        'SELECT id, email, name FROM users WHERE id = $1',
+        [userId]
+      )
+      const user = result.rows[0]
 
       if (!user) {
         return res.status(404).json({ error: 'User not found' })
       }
 
       res.json({
-        id: user._id,
+        id: user.id,
         email: user.email,
         name: user.name,
       })
     } catch (error) {
       console.error('Me error:', error)
       res.status(500).json({ error: 'Failed to get user' })
+    } finally {
+      client.release()
     }
   }
 
@@ -120,25 +138,51 @@ export class AuthController {
    * Update profile
    */
   static async updateProfile(req: Request, res: Response) {
+    const client = await pool.connect()
     try {
       const userId = (req as any).userId
       const { name, githubToken, openHandsApiKey } = req.body
 
-      const updateData: any = {}
-      if (name) updateData.name = name
-      if (githubToken) updateData.githubToken = githubToken
-      if (openHandsApiKey) updateData.openHandsApiKey = openHandsApiKey
+      const updates: string[] = []
+      const values: any[] = []
+      let paramCount = 1
 
-      const user = await User.findByIdAndUpdate(userId, updateData, { new: true }).select('-password')
+      if (name) {
+        updates.push(`name = $${paramCount++}`)
+        values.push(name)
+      }
+      if (githubToken) {
+        updates.push(`github_token = $${paramCount++}`)
+        values.push(githubToken)
+      }
+      if (openHandsApiKey) {
+        updates.push(`openHands_api_key = $${paramCount++}`)
+        values.push(openHandsApiKey)
+      }
+
+      if (updates.length === 0) {
+        return res.status(400).json({ error: 'Nothing to update' })
+      }
+
+      updates.push(`updated_at = CURRENT_TIMESTAMP`)
+      values.push(userId)
+
+      const result = await client.query(
+        `UPDATE users SET ${updates.join(', ')} WHERE id = $${paramCount} RETURNING id, email, name`,
+        values
+      )
+      const user = result.rows[0]
 
       res.json({
-        id: user?._id,
-        email: user?.email,
-        name: user?.name,
+        id: user.id,
+        email: user.email,
+        name: user.name,
       })
     } catch (error) {
       console.error('Update profile error:', error)
       res.status(500).json({ error: 'Failed to update profile' })
+    } finally {
+      client.release()
     }
   }
 }

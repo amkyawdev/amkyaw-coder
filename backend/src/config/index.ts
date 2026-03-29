@@ -6,9 +6,9 @@ export const config = {
   port: process.env.PORT || 4000,
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
   
-  // MongoDB
-  mongo: {
-    uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/amkyawcoder',
+  // PostgreSQL (Neon)
+  database: {
+    url: process.env.DATABASE_URL || '',
   },
 
   // JWT
@@ -21,10 +21,5 @@ export const config = {
   openhands: {
     baseUrl: process.env.OPENHANDS_API_URL || 'https://app.all-hands.dev',
     apiKey: process.env.OPENHANDS_API_KEY || '',
-  },
-
-  // Redis (optional)
-  redis: {
-    url: process.env.REDIS_URL || 'redis://localhost:6379',
   },
 }
