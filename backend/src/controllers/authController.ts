@@ -35,11 +35,8 @@ export class AuthController {
       await user.save()
 
       // Generate JWT
-      const token = jwt.sign(
-        { userId: user._id, email: user.email },
-        config.jwt.secret,
-        { expiresIn: config.jwt.expiresIn }
-      )
+      const payload = { userId: String(user._id), email: user.email }
+      const token = jwt.sign(payload, config.jwt.secret, { expiresIn: '7d' } as any)
 
       res.status(201).json({
         user: {
@@ -79,11 +76,8 @@ export class AuthController {
       }
 
       // Generate JWT
-      const token = jwt.sign(
-        { userId: user._id, email: user.email },
-        config.jwt.secret,
-        { expiresIn: config.jwt.expiresIn }
-      )
+      const payload = { userId: String(user._id), email: user.email }
+      const token = jwt.sign(payload, config.jwt.secret, { expiresIn: '7d' } as any)
 
       res.json({
         user: {

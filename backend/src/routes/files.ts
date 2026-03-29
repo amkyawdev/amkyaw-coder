@@ -68,7 +68,7 @@ router.put('/:id', async (req, res, next) => {
       return res.status(404).json({ error: 'File not found' })
     }
     
-    const file = project.files.id(req.params.id)
+    const file = (project.files as any).find((f: any) => f._id.toString() === req.params.id)
     res.json(file)
   } catch (error) {
     next(error)
