@@ -9,8 +9,6 @@ import { initDB } from './config/initDb'
 // Routes
 import sessionsRouter from './routes/sessions'
 import projectsRouter from './routes/projects'
-import filesRouter from './routes/files'
-import eventsRouter from './routes/events'
 import authRouter from './routes/auth'
 
 // Middleware
@@ -47,8 +45,6 @@ app.use(express.json())
 app.use('/api/auth', authRouter)
 app.use('/api/sessions', sessionsRouter)
 app.use('/api/projects', projectsRouter)
-app.use('/api/files', filesRouter)
-app.use('/api/events', eventsRouter)
 
 // Health check
 app.get('/health', (req, res) => {

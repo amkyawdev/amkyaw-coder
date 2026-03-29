@@ -1,65 +1,135 @@
 import { Router } from 'express'
-import { openHandsService } from '../services/openhandsService'
+import pool from '../config/database'
 
 const router = Router()
 
-// Start a new session (conversation with AI)
-router.post('/start', async (req, res, next) => {
+// Get all sessions for user
+router.get('/', async (req, res, next) => {
+  const client = await pool.connect()
   try {
-    const { message, repository } = req.body
+    const userId = req.headers['x-user-id'] as string
     
-    if (!message) {
-      return res.status(400).json({ error: 'Message is required' })
+    let query = 'SELECT * FROM sessions'
+    let params: any[] = []
+    
+    if (userId) {
+      query += ' WHERE user_id = $1 ORDER BY created_at DESC'
+      params = [userId]
+    } else {
+      query += ' ORDER BY created_at DESC'
     }
-
-    const repo = repository || 'default-project'
-    const result = await openHandsService.startConversation(message, repo)
     
-    res.json(result)
+    const result = await client.query(query, params)
+    res.json(result.rows)
   } catch (error) {
     next(error)
+  } finally {
+    client.release()
   }
 })
 
-// Start session with streaming
-router.post('/stream-start', async (req, res, next) => {
+// Create new session
+router.post('/', async (req, res, next) => {
+  const client = await pool.connect()
   try {
-    const { message, repository } = req.body
+    const { projectId, mode } = req.body
+    const userId = req.headers['x-user-id'] as string
     
-    if (!message) {
-      return res.status(400).json({ error: 'Message is required' })
-    }
-
-    const repo = repository || 'default-project'
-    const result = await openHandsService.startConversationStream(message, repo)
-    
-    res.json(result)
+    const result = await client.query(
+      'INSERT INTO sessions (project_id, user_id, mode, status) VALUES ($1, $2, $3, $4) RETURNING *',
+      [projectId, userId || null, mode || 'chat', 'pending']
+    )
+    res.status(201).json(result.rows[0])
   } catch (error) {
     next(error)
+  } finally {
+    client.release()
   }
 })
 
-// Get session status
-router.get('/:id/status', async (req, res, next) => {
+// Get session by ID
+router.get('/:id', async (req, res, next) => {
+  const client = await pool.connect()
   try {
     const { id } = req.params
-    const status = await openHandsService.getConversationStatus(id)
     
-    res.json(status)
+    const result = await client.query(
+      'SELECT * FROM sessions WHERE id = $1',
+      [id]
+    )
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Session not found' })
+    }
+    
+    res.json(result.rows[0])
   } catch (error) {
     next(error)
+  } finally {
+    client.release()
   }
 })
 
-// Poll session until completion
-router.post('/:id/poll', async (req, res, next) => {
+// Update session
+router.put('/:id', async (req, res, next) => {
+  const client = await pool.connect()
   try {
     const { id } = req.params
-    const result = await openHandsService.pollUntilComplete(id)
+    const { status, mode } = req.body
     
-    res.json(result)
+    const updates: string[] = []
+    const values: any[] = []
+    let paramCount = 1
+    
+    if (status) {
+      updates.push(`status = $${paramCount++}`)
+      values.push(status)
+    }
+    if (mode) {
+      updates.push(`mode = $${paramCount++}`)
+      values.push(mode)
+    }
+    
+    updates.push(`updated_at = CURRENT_TIMESTAMP`)
+    values.push(id)
+    
+    const result = await client.query(
+      `UPDATE sessions SET ${updates.join(', ')} WHERE id = $${paramCount} RETURNING *`,
+      values
+    )
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Session not found' })
+    }
+    
+    res.json(result.rows[0])
   } catch (error) {
     next(error)
+  } finally {
+    client.release()
+  }
+})
+
+// Delete session
+router.delete('/:id', async (req, res, next) => {
+  const client = await pool.connect()
+  try {
+    const { id } = req.params
+    
+    const result = await client.query(
+      'DELETE FROM sessions WHERE id = $1 RETURNING id',
+      [id]
+    )
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Session not found' })
+    }
+    
+    res.json({ message: 'Session deleted' })
+  } catch (error) {
+    next(error)
+  } finally {
+    client.release()
   }
 })
 
